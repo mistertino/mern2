@@ -1,0 +1,5 @@
+- 	chỉ mục một hành động thực hiện
+>>> lệnh 
+> 	ghi chú
+'' 	liên kết url hoặc folder path
+**************************************
