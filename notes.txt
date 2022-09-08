@@ -3,3 +3,320 @@
 > 	ghi chú
 '' 	liên kết url hoặc folder path
 **************************************
+- Back-end
+	>>> npm init
+
+	>>>  npm i express jsonwebtoken mongoose dotenv argon2 cors
+
+	>>>  npm i --save-dev nodemon
+
+	- Tạo file index.js trong folder vừa tạo nodejs
+		- const express = require('express')
+		const app = express()
+		const PORT = 5000
+		app.listen(PORT, () => console.log(`Sever started on port ${PORT}`))
+			> để tạo một app sever chạy trên port 5000
+				> truy cập localhost:5000/
+
+	-Connect MongoDB 	
+		- https://cloud.mongodb.com/
+			- Tạo một project mới: mern-learnit
+				- Tạo cluster: mern-learnit
+					- Connect:
+						- Chọn Allow acess from anywhere
+							- Tại connection method chọn : Connect your application
+								- Copy link mongodb tạo cho:
+							
+		- Tại index.js:
+			const connectDB = async () => {
+				try {
+					await mongoose.connect(`mongodb+srv://tamninja2:tamninja2k@mern-learnit.axwz2dl.mongodb.net/mern-learnit?retryWrites=true&w=majority`, {
+						useNewUrlParser: true,
+						useUnifiedTopology: true,
+					})
+					console.log('Connected to MongoDB')
+				} catch (error) {
+					console.log(error.message)
+					process.exit(1)
+				}
+			connectDB()
+
+					> để connect sever tới mongodb vừa tạo (link cop ở bước trên)
+				
+	- Tạo Models
+		- Tạo file , folder:
+			\models\User.js
+			
+		- Tại file \models\User.js tạo Schema
+			const mongoose = require('mongoose')
+			const Schema = mongoose.Schema
+			const UserSchema = new Schema({
+				username: {
+					type: String,
+					required: true,
+					unique: true
+				},
+				password: {
+					type: String,
+					required: true
+				},
+				createdAt: {
+					type : Date,
+					default: Date.now
+				}
+			})
+			module.exports = mongoose.model('users', UserSchema)
+				> để tạo một model User và export
+				
+		- Tạo file: \models\Post.js:
+		- Tại file: \models\Post.js tạo Schema
+			const mongoose = require('mongoose')
+			const { StringDecoder } = require('string_decoder')
+			const Schema = mongoose.Schema
+			const PostSchema = new Schema({
+				title: {
+					type: String,
+					required: true
+				},
+				description: {
+					type: String
+				},
+				url: {
+					type: StringDecoder,
+				},
+				status: {
+					type: String,
+					enum: ['TO LEARN', 'LEARNING', 'LEARNED']
+				},
+				user: {
+					type: Schema.Types.ObjectId,
+					ref: 'users'
+				}
+			})
+			module.exports = mongoose.model('post', PostSchema)
+				> để tạo một model Post vả export
+					> user: {
+						type: Schema.Types.ObjectId,
+						ref: 'users'
+					}	
+						> để link field user của model User với Post
+		
+		- Tại file index.js:
+			const mongoose = require('mongoose')
+
+	- Tạo router Auth
+		- Tạo file, folder:
+			\routes\auth.js
+			
+		- Tại \routes\auth.js:
+			const express = require('express')
+			const router = express.Router()
+			const User = require('../models/User')
+			router.get('/', (req, res) => res.send('User Route'))
+			module.exports = router
+			
+		- Tại index.js:
+			const authRouter = require('./routes/auth')
+			app.use('/api/auth', authRouter)	
+				> để trỏ router tới localhost:5000/api/auth
+				
+	- Tạo biến .env
+		- tạo file: \.env
+			- Tại \.env
+				DB_USERNAME=tamninja2
+				DB_PASSWORD=tamninja2
+				ACCESS_TOKEN_SECRET=asdaksljdakljrgsdjfsd
+		- Tại index.js:
+			require("dotenv").config();
+				> để require dotenv
+				
+			thay các biến DB_USERNAME, DB_PASSWORD cho link tới mongodb:
+				`mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}k@mern-learnit.axwz2dl.mongodb.net/mern-learnit?retryWrites=true&w=majority`,	
+				
+	- Tạo route Auth Register/Login
+		- Tại sever\routes\auth.js:
+			router.post("/register", async (req, res) => {
+				> để tạo route tới localhost:5000/api/auth/register với phương thức post
+			
+			const { username, password } = req.body;
+				> để gán biến username, password với giả trị gửi đi từ register (giá trị gửi đi bằng phương thức post lưu ở biến body)
+			
+			- Kiếm tra các trường hợp của username và password:
+				- if (!username || !password)
+					return res
+					  .status(400)
+					  .json({ success: false, message: "Missing Username or Password" });
+						> username, password trống
+				
+				- try {
+					const user = await User.findOne({ username });
+					if (user)
+					  return res.status(400).json({ success: false, message: "User already" });
+						> đã tồn tại username trong database
+						
+				- const hashedPassword = await argon2.hash(password);
+					const newUser = new User({ username, password: hashedPassword });
+					await newUser.save();
+					const accessToken = jwt.sign(
+					  { userId: newUser._id },
+					  process.env.ACCESS_TOKEN_SECRET
+					);
+
+					res.json({
+					  success: true,
+					  message: "User created successfully",
+					  accessToken,
+					});
+						> Nếu username, password hợp lệ thỳ lưu vào biến newUser vào lưu vào database sau đó gắn cho nó một accessToken
+			
+			------------> Làm tương tự để tạo route login
+			
+	- Tạo route POST
+		- Tạo middleware:
+			- Tạo file, folder:
+				\middleware\auth.js
+			
+			- Tại \middleware\auth.js
+				const jwt = require("jsonwebtoken");
+				const verifyToken = (req, res, next) => {
+				  const authHeader = req.header("Authorization");
+				  const token = authHeader && authHeader.split(" ")[1];
+				  if (!token)
+					return res
+					  .status(401)
+					  .json({ success: false, mesage: "Access token not found" });
+				  try {
+					const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+					req.userId = decoded.userId;
+					next();
+				  } catch (error) {
+					console.log(error);
+					return res.status(403).json({ success: false, message: "Invalid Token" });
+				  }
+				};
+				module.exports = verifyToken;
+					> const authHeader = req.header("Authorization");
+					  const token = authHeader && authHeader.split(" ")[1];	
+						> Khi gửi request với jsonwebtoken thỳ header có dạng Authorization:  Bearer <token> -> biến authHeader để lấy ra Authorization -> biến token để tách Bearer chỉ lấy token (phần thử [1] là token)
+					> const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+						> để kiểm tra với ACCESS_TOKEN_SECRET xem token có phải của mình đã kí ko (ACCESS_TOKEN_SECRET được tạo ở .env)
+					> req.userId = decoded.userId;
+						> decoded khi được verify thỳ có dạng object giống khi khai báo jwt bên routes\auth: jwt.sign({ userId: user._id },process.env.ACCESS_TOKEN_SECRET);
+							-> có thể lấy userId ứng với token (decoded.userId)
+							
+		- Tạo file \routes\post.js
+			- Tại \routes\post.js:
+				const express = require("express");
+				const router = express.Router();
+				const verifyToken = require("../middleware/auth");
+				const Post = require("../models/Post");
+				module.exports = router;
+					> để require middleware và model Post
+				
+			- Tại index.js:
+				const postRouter = require("./routes/post");
+				app.use("/api/posts", postRouter);
+					> để trỏ route tới localhost:5000/api/posts
+				- CRUD POST:
+					- Create Post:
+						- Tại \routes\post.js:
+							router.post("/", verifyToken, async (req, res) => {
+								> để trỏ route với phương thức post -> xác thực token bằng middleware
+							
+							const { title, description, url, status } = req.body;
+								> Khi request với phwuong thức post thỳ data được lưu ở body -> gán lại các data 
+							
+							if (!title)
+								return res
+								  .status(400)
+								  .json({ success: false, message: "Title is required" });
+									> kiểm tra title có được nhập chưa
+									
+							try {
+								const newPost = new Post({
+								  title,
+								  description,
+								  url: url.startsWith("https://") ? url : `https://${url}`,
+								  status: status || "TO LEARN",
+								  user: req.userId,
+								});
+
+								await newPost.save();
+								res.json({ success: true, message: "Post created", post: newPost });
+							  } catch (error) {
+								console.log(error);
+								res.status(500).json({ success: false, message: error });
+							  }
+							});
+								> Tạo biến newPost để lưu các trường người dùng nhập vào vào lưu và database
+								
+					- Read Post:
+						- Tại \routes\post.js:
+							router.get("/", verifyToken, async (req, res) => {
+								> để trỏ route với phương thức get -> xác thực token bằng middleware
+							
+							try {
+								const posts = await Post.find({ user: req.userId }).populate("user", [
+								  "username",
+								]);
+								res.json({ success: true, posts });
+							  } catch (error) {
+								console.log(error);
+								res.status(500).json({ success: false, message: error });
+							  }
+							});
+								> Lấy ra từ Post (Post.find) với điều kiện  { user: req.userId } 
+									> req.userId lấy từ verifyToken
+									
+					- Update Post:
+						router.put("/:id", verifyToken, async (req, res) => {
+							> để trỏ route với phương thức put tới /:id (:id là id của bản ghi trong post lấy ra để update) -> xác thực token bằng middleware
+							
+						const { title, description, url, status } = req.body;
+							> Lấy ra những giá trị update khi request từ biến body
+							
+						if (!title)
+							return res
+							  .status(400)
+							  .json({ success: false, message: "Title is required" });
+								> kiểm tra title có được nhập chưa
+								
+						try {
+							let updatedPost = {
+							  title,
+							  description: description || "",
+							  url: (url.startsWith("https://") ? url : `https://${url}`) || "",
+							  status: status || "TO_LEARN",
+							};
+
+							const postUpdateCondition = { _id: req.params.id, user: req.userId };
+
+							updatedPost = await Post.findOneAndUpdate(
+							  postUpdateCondition,
+							  updatedPost,
+							  { new: true }
+							);
+								> gán những giá trị update vào biến updatedPost -> tìm và update các field trong bản ghi  được lấy ra từ Post với điều kiện  _id: req.params.id, user: req.userId
+									> req.params.id: id của bản ghi được lấy trên url khi request
+							
+					- DELETE Post:
+						---> Tương tự như update:
+						router.delete("/:id", verifyToken, async (req, res) => {
+						  try {
+							const postDeleteCondition = { id: req.params.id, user: req.userId };
+							const deletedPost = await Post.findOneAndDelete(postDeleteCondition);
+							// User not authorised to update post
+							if (!deletedPost)
+							  res.status(401).json({
+								success: false,
+								message: "Post not found or user not authorised",
+							  });
+							res.json({ success: true, message: "Post deleted", post: deletedPost });
+						  } catch (error) {
+							console.log(error);
+							res.status(500).json({ success: false, message: error });
+						  }
+						});
+		
+		
+		
