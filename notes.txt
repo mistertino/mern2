@@ -317,6 +317,311 @@
 							res.status(500).json({ success: false, message: error });
 						  }
 						});
+						
+- Front-end
+	- Tại thư mực gốc:
+		>>> npx create-react-app client
+		>>> npm install react-router-dom
+		>>> npm install axios --save
+		>>> npm install react-bootstrap bootstrap
 		
+	- Import React Bootstrap	
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.2.0/dist/minty/bootstrap.min.css" integrity="sha256-MSALLcWJbwNhnXKVTgK+jBusxP1SGCExhv1vDIRgX4U=" crossorigin="anonymous">
+		copy đoạn trên và paste vào \client\public\index.html (phần <head>)
 		
+	- React Router:
+		- Authview	
+			- Tạo folder sau: \client\src\components\auth
+							\client\src\components\layout
+							\client\src\views
+										
+			- Tại \client\src\App.js:
+				import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+
+			- Tạo các component sau: \client\src\components\auth\LoginForm.js
+									 \client\src\components\auth\RegisterForm.js
+			
+			- Tại \client\src\App.js:
+				<Router>
+					<Routes>
+					  <Route path="/" element={<Landing />} />
+					  <Route exact path="/login" element={<Auth authRoute="login" />} />
+					  <Route exact path="/register" element={<Auth authRoute="register" />} />
+					</Routes>
+				  </Router>
+				  
+					> để props authRoute cho Authview với route tương ứng
+					
+			- Tạo Authview \client\src\views\Auth.js
+				- import React from 'react'
+				import LoginForm from '../component/auth/LoginForm'
+				import RegisterForm from '../component/auth/RegisterForm'
+					> để import 2 component trên
+					
+				const Auth = ({ authRoute }) => {	
+				let body
+				body = (
+					<>
+					  {authRoute === 'login' && <LoginForm />}{' '}
+					  {authRoute === 'register' && <RegisterForm />}
+					</>
+				return (<>{body}</>
+					> để render các component theo authRoute tương ứng
+				
+			- Tạo file: \client\src\components\layout\Landing.js
+				import React from 'react'
+				import { Navigate } from 'react-router-dom'
+				const Landing = () => {
+				  return <Navigate to="/login" />
+				}
+				export default Landing
+					> để chuyển hướng tới localhost:3000/login 
+				
+		- Logic Auth:
+			- Tạo file, folder sau:
+				\client\src\contexts\AuthContexts.js
+				\client\src\contexts\constant.js
+				\client\src\reducers\authReducer.js
+				
+			- Tại \client\src\contexts\constant.js:
+				export const apiUrl =
+				  process.env.NODE_ENV !== 'production' ? 'http://localhost:5000/api' : ''
+				export const LOCAL_STORAGE_TOKEN_NAME = 'learnit-mern'
+					> để xuất ra biến apiUrl : là url của back-end đã tạo trên và một biến LOCAL_STORAGE_TOKEN_NAME
+				
+			- Tại \client\src\contexts\AuthContexts.js
+				import { createContext, useReducer } from 'react'
+				import { authReducer } from '../reducers/authReducer'
+				import { apiUrl, LOCAL_STORAGE_TOKEN_NAME } from './constants'
+				import axios from 'axios'
+				export const AuthContext = createContext()
+				const AuthContextProvider = ({ children }) => {
+				  const [authState, dispath] = useReducer(authReducer, {
+					authLoading: true,
+					isAuthenticataed: false,
+					user: null,
+				  })
+					> tạo một authState
+					
+				const loginUser = async (userForm) => {
+					try {
+					  const response = await axios.post(`${apiUrl}/auth/login`, userForm)
+					  if (response.data.success)
+						localStorage.setItem(
+						  LOCAL_STORAGE_TOKEN_NAME,
+						  response.data.accessToken,
+						)
+					  return response.data
+					} catch (error) {
+					  if (error.response.data) return error.response.data
+					  else return { success: false, message: error.message }
+					}
+				}
+					> dùng axios request với phương thức post tới  ${apiUrl}/auth/login (API) với userForm (là dữ liệu login)
+					> Nếu userForm tồn tại trong database thỳ response.data.success = true và gán vào localStorage accessToken
+				
+				const authContextData = { loginUser }
+				return (
+					<AuthContext.Provider value={authContextData}>
+						{children}
+					</AuthContext.Provider>
+					)
+				}
+				export default AuthContextProvider
+					> Tạo Context data để bọc dữ liệu cho component
+					
+			- Tại \client\src\App.js
+				import AuthContextProvider from './contexts/AuthContext'
+					> import AuthContextProvider
 		
+					 <AuthContextProvider>
+					  <Router>
+						<Routes>
+						  <Route path="/" element={<Landing />} />
+						  <Route exact path="/login" element={<Auth authRoute="login" />} />
+						  <Route
+							exact
+							path="/register"
+							element={<Auth authRoute="register" />}
+						  />
+						  <Route path="/dashboard" element={<DashBoard />} />
+						</Routes>
+					  </Router>
+					</AuthContextProvider>
+						> Bọc  <AuthContextProvider> cho toàn bộ app
+			
+			- Tại \client\src\components\auth\LoginForm.js
+				import React from 'react'
+				import { Button, Form } from 'react-bootstrap'
+				import { Link, useNavigate } from 'react-router-dom'
+				import { useState, useContext } from 'react'
+				import { AuthContext } from '../../contexts/AuthContext'
+					> import những thứ cần thiết :)
+					
+				const LoginForm = () => {
+				
+					const navigate = useNavigate()
+					const { loginUser } = useContext(AuthContext)
+						> gọi hàm loginUser từ AuthContext
+						
+					const [userForm, setUserForm] = useState({
+						username: '',
+						password: '',
+					  })
+					const { username, password } = userForm
+						> Tạo một state userForm chứa dữ liệu loginUser
+						
+					const onChangeLoginForm = (event) =>
+						setUserForm({ ...userForm, [event.target.name]: event.target.value })
+						> set state cho userForm khi nhập dữ liệu 
+						> [event.target.name]: tên của đối tượng đang thực hiện event
+						> event.target.value: giá trị của đối tượng đang thực hiện event
+				
+					const handleLogin = async (event) => {
+						event.preventDefault()
+						try {
+						  const loginData = await loginUser(userForm)
+						  if (loginData.success) {navigate('/dashboard')}
+						} catch (error) {
+						  console.log(error)}
+					}						
+						> Tạo một  func handleLogin trong đó gọi loginUser(lấy từ AuthContext) để xác thực login với dữ liệu truyền vào là userForm
+							> loginData.success: nếu giá trị userForm truyền vào có trong database -> true -> sử dụng navigate để chuển hướng tới /Dashboard
+							
+				return (<>
+					  <Form className="my-4" onSubmit={handleLogin}>
+						<Form.Group>
+						  <Form.Control type="text" name="username" value={username} onChange={onChangeLoginForm} required />
+						</Form.Group>
+						<Form.Group>
+						  <Form.Control type="password"	name="password" value={password} onChange={onChangeLoginForm} required />
+						</Form.Group>
+						<Button variant="success" type="submit">Login</Button>
+					  </Form>
+					  <p>
+						Don't have an account?
+						<Link to="/register">
+						  <Button variant="info" size="sm" className="ml-4">
+							Register
+						  </Button>
+						</Link>
+					  </p>
+					</>)
+						> tạo form login, onSubmit={handleLogin}: gọi hàm handleLogin khi submit form
+										  onChange={onChangeLoginForm}: gọi hàm onChangeLoginForm khi nhập input (<Form.Control/>)
+										  value={username} gán giá trị cho input rồi setstate userform
+										  
+			- Tại \sever\index.js:
+				const cors = require('cors')
+				app.use(cors())
+					> để gửi được request từ client (localhost:3000) tới sever(localhost:5000)
+					
+			- Tại \sever\routes\auth.js
+				const verifyToken = require('../middleware/auth')
+				router.get('/', verifyToken, async (req, res) => {
+				  try {
+					const user = await User.findById(req.userId).select('-password')
+					if (!user)
+					  return res.status(400).json({ success: false, message: 'User not found' })
+					res.json({ success: true, user })
+				  } catch (error) {
+					console.log(error)
+					res.status(500).json({ success: false, message: error })
+				  }
+				})
+					> tạo một route phương thức get tới localhost:5000/ 
+					> const user = await User.findById(req.userId).select('-password')
+						> tìm trong bảng User của database với req.userId (lấy từ middleware verifyToken) và gán vào user
+					> kiểm tra nếu có userId mà middleware verifyToken xác thực thỳ trả về success: true
+			
+			- Tại \client\src\contexts\AuthContexts.js
+				const registerUser = async (registerForm) => {
+					try {
+					  const response = await axios.post(`${apiUrl}/auth/register`, registerForm)
+					  if (response.data.success)
+						localStorage.setItem(
+						  LOCAL_STORAGE_TOKEN_NAME,
+						  response.data.accessToken,
+						)
+					  await loadUser()
+					  return response.data
+					} catch (error) {
+					  if (error.response.data) return error.response.data
+					  else return { success: false, message: error.message }
+					}
+				  }
+					> Tạo hàm registerUser tương tự như login
+			
+			- Tại \client\src\components\auth\RegisterForm.js
+				- Làm tương tự như LoginForm.js:
+				import React from 'react'
+				import { Button, Form } from 'react-bootstrap'
+				import { Link } from 'react-router-dom'
+				import { useContext, useState } from 'react'
+				import { AuthContext } from '../../contexts/AuthContext'
+				import AlertMessage from '../layout/AlertMessage'
+				const RegisterForm = () => {
+				 const { registerUser } = useContext(AuthContext)
+				 const [registerForm, setRegisterForm] = useState({
+				   username: '',
+				   password: '',
+				   confirmPassword: ''
+				 })
+				 const [alert, setAlert] = useState(null)
+				 const { username, password, confirmPassword } = registerForm
+				 const onChangeRegisterForm = (event) =>
+				   setRegisterForm({ ...registerForm, [event.target.name]: event.target.value })
+				 const handleRegister = async (event) => {
+				   event.preventDefault()
+				   if (password !== confirmPassword){
+					setAlert({type: 'danger', message: 'Password do not match'})
+					setTimeout(() => setAlert(null), 5000)
+					return
+				   }
+				   try {
+					 const registerData = await registerUser(registerForm)
+					 if (!registerData.success) {
+					   setAlert({ type: 'danger', message: registerData.message })
+					 }
+				   } catch (error) {
+					 console.log(error)
+				   }
+				 }
+				  return (
+					<>
+					  <Form className="my-4" onSubmit={handleRegister}>
+						<AlertMessage info={alert} />
+						<Form.Group>
+						  <Form.Control
+							type="text" placeholder="username" name="username" className="my-3" value={username} onChange={onChangeRegisterForm} required
+						  />
+						</Form.Group>
+						<Form.Group>
+						  <Form.Control
+							type="password" name="password" className="my-3" value={password} onChange={onChangeRegisterForm} required
+						  />
+						</Form.Group>
+						<Form.Group>
+						  <Form.Control
+							type="password" name="confirmPassword" className="my-3" value={confirmPassword} onChange={onChangeRegisterForm} required
+						  />
+						</Form.Group>
+						<Button variant="success" type="submit">
+						  Register
+						</Button>
+					  </Form>
+					  <p>
+						Already have an account?
+						<Link to="/login">
+						  <Button variant="info" size="sm" className="ml-2">
+							Login
+						  </Button>
+						</Link>
+					  </p>
+					</>
+				  )
+				}
+				export default RegisterForm
+				
+			
+					
