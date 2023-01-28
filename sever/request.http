@@ -1,0 +1,52 @@
+
+
+
+
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+    "username": "tamninja2",
+    "password": "tamninja"
+}
+
+###
+
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "tamninja2",
+    "password": "tamninja2"
+}
+
+###
+
+
+POST http://localhost:5000/api/posts
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2MzE5OTQyNDA5ZDBiNDRhN2I1ZDc4OTciLCJpYXQiOjE2NjI2MjUyNzR9.ZJPb0mMtZJyUrxwAiWZm14UEPVXhiMW8p5lO-l68M4Q
+
+{
+    "title":"MERN 2",
+    "description" : "ádhjgjhg",
+    "url": "google.com",
+    "status": "LEARNING"
+}
+
+###
+
+GET http://localhost:5000/api/posts
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2MzE5OTQyNDA5ZDBiNDRhN2I1ZDc4OTciLCJpYXQiOjE2NjI2MjUyNzR9.ZJPb0mMtZJyUrxwAiWZm14UEPVXhiMW8p5lO-l68M4Q
+
+###
+PUT http://localhost:5000/api/posts/6319a8c8e306ee9486851387
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2MzE5OTQyNDA5ZDBiNDRhN2I1ZDc4OTciLCJpYXQiOjE2NjI2MjUyNzR9.ZJPb0mMtZJyUrxwAiWZm14UEPVXhiMW8p5lO-l68M4Q
+
+{
+    "title":"React",
+    "description" : "Rì ách",
+    "url": "google.com",
+    "status": "LEARNING"
+}
